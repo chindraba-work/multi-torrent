@@ -1,0 +1,10 @@
+# Extend the 'drop-in' configuration by using per-instance directories
+# within the congig.d directory. All file in the config.d directory are
+# loaded first, from the main .rc file, then the files in the
+# per-instance subdirectory are loaded, in lexical order.
+
+method.insert = cfg.instance.drop_in, private|const|string, (cat,(cfg.instdir),(cfg.dropin_suffix))
+execute.nothrow = bash, -c, (cat,\
+    "find ", (cfg.instance.drop_in), " -name '*.rc' ",\
+    "| sort | sed -re 's/^/import=/' >", (cfg.instance.drop_in), "/.import")
+try_import = (cat, (cfg.instance.drop_in), "/.import")

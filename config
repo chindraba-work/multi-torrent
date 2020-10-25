@@ -1,0 +1,22 @@
+#! /usr/bin/env bash
+
+# The name to use for the controls in systemd
+service_name='multi-torrent'
+
+# The directory which will be the root for the system
+# Each instance will have a directory in the 'instances'
+# sub directory of this directory
+torrent_root=~/multi-torrent/
+
+# The local IP address of the machine running rtorrent
+internal_ip='192.168.100.2'
+
+# The Internet-facing IP address for the system. Try using
+# http://ifconfig.me if you don't know your IP address
+external_ip='10.4.4.64'
+
+# The prefix for port numbers used by rtorrent. The system will
+# add two more digits to this, so '567' will cause the system to
+# use ports in the range 56710 - 56789, if the contents of the 
+# included data file are followed
+port_range='567'

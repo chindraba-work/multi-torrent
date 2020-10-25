@@ -1,0 +1,36 @@
+# rTorrent Configuration for <<_INSTANCE_NAME>>
+#############################################################################
+# See https://github.com/rakshasa/rtorrent/wiki/CONFIG-Template
+# for an up-to-date version.
+#############################################################################
+
+################################################
+################################################
+########                                ########
+########   Set 4 Lines: 18, 19 and 23   ########
+########                                ########
+################################################
+################################################
+
+# Instance port control settings. Replace '<<_NET_PORT>>' and '<<_DHT_PORT>>'
+# with the values for this instance, found in:
+#    <<_SERVICE_ROOT>><<_SERVICE_NAME>>.data
+method.insert = cfg.net_port,      private|const|string, (cat,"<<_NET_PORT>>")
+method.insert = cfg.dht_port,      private|const|string, (cat,"<<_DHT_PORT>>")
+
+# Name of the instance controlled by this .rtorrent.rc file as used in other
+# file and setting names
+method.insert = cfg.instance,      private|const|string, (cat,"<<_INSTANCE_NAME>>")
+
+method.insert = cfg.rootdir,       private|const|string, (cat,"<<_SERVICE_ROOT>>")
+
+# Enable 'drop-in' configuration by loading small additions from the directory
+# stub under the base directory.
+# Eliminates the need to edit/update the main .rtorrent.rc file for each change,
+# or feature update. All *.rc files in confi.d will be loaded, in lexical order.
+method.insert = cfg.dropin_suffix, private|const|string, (cat, "config/config.d")
+method.insert = cfg.drop_in, private|const|string, (cat, (cfg.rootdir), "config/config.d")
+execute.nothrow = bash, -c, (cat,\
+    "find ", (cfg.drop_in), " -maxdepth 1 -name '*.rc' ",\
+    "| sort | sed -re 's/^/import=/' >", (cfg.drop_in), "/.import")
+try_import = (cat, (cfg.drop_in), "/.import")

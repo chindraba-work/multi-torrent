@@ -1,0 +1,1 @@
+print=(cat, "Custom config loaded for ", (cfg.instance), "!")

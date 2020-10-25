@@ -1,0 +1,8 @@
+[Unit]
+Description=Grouping of <<_SERVICE_NAME>> instances
+After=cron.service
+
+# This collection of rtorrent clients should be started at boot time.
+Wants=<<_SERVICE_NAME>>@default.service
+[Install]
+WantedBy=multi-user.target

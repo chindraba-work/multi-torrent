@@ -1,0 +1,7 @@
+# From ArchLinux Wiki, rTorrent UI Tricks
+# https://wiki.archlinux.org/index.php/RTorrent#UI_Tricks
+
+# rTorrent does not list the active tab properly by default, add this
+# line to your .rtorrent.rc to show only active torrents
+
+schedule2 = filter_active,30,30,"view.filter = active,\"or={d.up.rate=,d.down.rate=}\""

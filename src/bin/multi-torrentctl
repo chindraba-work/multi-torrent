@@ -1,0 +1,205 @@
+#! /usr/bin/env bash
+# SPDX-License-Identifier: MIT
+
+########################################################################
+#                                                                      #
+#  This file is part a system to setup and control a configuration for #
+#  using multiple instances of the rtorrent client.                    #
+#                                                                      #
+#  Copyright © 2020  Chindraba (Ronald Lamoreaux)                      #
+#                    <projects@chindraba.work>                         #
+#  - All Rights Reserved                                               #
+#                                                                      #
+#  Permission is hereby granted, free of charge, to any person         #
+#  obtaining a copy of this software and associated documentation      #
+#  files (the "Software"), to deal in the Software without             #
+#  restriction, including without limitation the rights to use, copy,  #
+#  modify, merge, publish, distribute, sublicense, and/or sell copies  #
+#  of the Software, and to permit persons to whom the Software is      #
+#  furnished to do so, subject to the following conditions:            #
+#                                                                      #
+#  The above copyright notice and this permission notice shall be      #
+#  included in all copies or substantial portions of the Software.     #
+#                                                                      #
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,     #
+#  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF  #
+#  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND               #
+#  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS #
+#  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN  #
+#  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN   #
+#  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE    #
+#  SOFTWARE.                                                           #
+#                                                                      #
+########################################################################
+
+########################################################################
+#                                                                      #
+#  The main operational controller for the system                      #
+#                                                                      #
+########################################################################
+
+version='0.1.0'
+
+show_version() {
+  printf "
+multi-torrent ver. $version.
+
+A system for creating and controlling a collection of rtorrent
+client instances with, or without, the use of systemd.
+
+Released under the MIT License.
+
+########################################################################
+#                                                                      #
+#  Copyright © 2020  Chindraba (Ronald Lamoreaux)                      #
+#                    <projects@chindraba.work>                         #
+#  - All Rights Reserved                                               #
+#                                                                      #
+#  Permission is hereby granted, free of charge, to any person         #
+#  obtaining a copy of this software and associated documentation      #
+#  files (the \"Software\"), to deal in the Software without             #
+#  restriction, including without limitation the rights to use, copy,  #
+#  modify, merge, publish, distribute, sublicense, and/or sell copies  #
+#  of the Software, and to permit persons to whom the Software is      #
+#  furnished to do so, subject to the following conditions:            #
+#                                                                      #
+#  The above copyright notice and this permission notice shall be      #
+#  included in all copies or substantial portions of the Software.     #
+#                                                                      #
+#  THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,     #
+#  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF  #
+#  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND               #
+#  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS #
+#  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN  #
+#  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN   #
+#  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE    #
+#  SOFTWARE.                                                           #
+#                                                                      #
+########################################################################
+"
+}
+
+usage() {
+  [ -n "$1" ] && printf "\nERROR: %s!\n" "$@" >&2;
+  printf "  
+Usage: ${service_name}ctl <command> <instance_name> [<net_port> <dht_port>]
+    command:  start|stop|reload|restart|new|create|enabel|help|version
+    instance: name of the instance, for directory and screen name
+    net_port: port number for torrent usage
+    dht_port: port number for DHT usage
+
+" >&2
+  [ -n "${1}" ] && exit 11
+}
+
+give_help() {
+  usage
+  printf "
+     Commands:
+        new: Create the directory structure for a new instance. Requires a name
+              for the new instance and the port numbers for torrent data and DHT use.
+        start|stop|restart: Start, stop, or restart the named instance. Requires
+              the name of the instance to control. Bypasses the systemd control, and
+              is used by systemd.
+        enable: Add the named instance to those controlled by systemd, if used.
+        help: Display this message.
+        version: Display the version number and copyright information.
+"
+}
+
+# see also: https://github.com/rakshasa/rtorrent/wiki/Common-Tasks-in-rTorrent
+service_name="<<_SERVICE_NAME>>"
+torrent_root="<<_SERVICE_ROOT>>"
+instance_root="${torrent_root}instances";
+
+[ -n "${2}" ] \
+  && instance_name="${2}" \
+  || instance_name='default';
+
+check_instance() {
+  [ -d "${instance_root}/${instance_name}" ] && \
+  [ -e "${instance_root}/${instance_name}/.rtorrent.rc" ] || \
+     usage "No config file found for ${service_name} instance '${instance_name}'"
+}
+
+start_instance() {
+  check_instance;
+  rm -r "${instance_root}/${instance_name}/.session/rtorrent.lock" 2>/dev/null;
+  screen -d -m -t "${service_name}-${instance_name}" -S "${service_name}_${instance_name}" rtorrent -D -I -n -o import="${instance_root}/${instance_name}/.rtorrent.rc";
+}
+
+stop_instance() {
+  check_instance;
+  [ -e "${instance_root}/${instance_name}/.session/rtorrent.lock" ] || return;
+  [ -e "${instance_root}/${instance_name}/.session/rtorrent.pid" ] || return;
+  kill -s SIGTERM $(cat "${instance_root}/${instance_name}/.session/rtorrent.pid");
+  while [ -e "${instance_root}/${instance_name}/.session/rtorrent.lock" ]; do
+    sleep 0.5
+  done
+}
+
+make_instance() {
+  [ -n "${2}" ] || usage "No instance name specified"
+  [ -d "${instance_root}/${2}" ] || \
+  [ -e "${instance_root}/${2}/.rtorrent.rc" ] && \
+    usage "Existing config file found for rtorrent instance ${2}. Not re-creating"
+  [ -n "${3}" ] && [ -n "${4}" ] || \
+    usage "Both port numbers are required to create a new instance"
+  cp -r "${instance_root}/.per-instance" "${instance_root}/${instance_name}"
+  pushd "${torrent_root}config/config.d/.per-instance" >/dev/null
+  printf "\n    Select optional files to include:\n"
+  for option_file in *.rc; do
+    waiting='y';
+    while [ "${waiting}" ]; do
+      read -p "Include ${option_file} in the configuration of ${2}? Y/n: " use_it
+      use_it="${use_it:0:1}"
+      case "${use_it^}" in
+        Y) cp "${torrent_root}config/config.d/.per-instance/${option_file}" "${instance_root}/${instance_name}/config/config.d/"
+          ;&
+        N) waiting=''
+          ;;
+      esac
+    done
+  done
+  popd >/dev/null
+  sed -i -e\
+    "\
+      s:<<_INSTANCE_NAME>>:${2}:;\
+      s:\"<<_NET_PORT>>\":\"${3}\":;\
+      s:\"<<_DHT_PORT>>\":\"${4}\":\
+    "\
+    "${instance_root}/${instance_name}/.rtorrent.rc"
+}
+
+enable_instance() {
+  [ -e "/usr/lib/systemd/system/${service_name}.target" ] && 
+    sed -i "/^\[Install/ i Wants=${service_name}@${instance_name}" "${service_name}.target"
+}
+
+case ${1^^} in
+  NEW|CREATE)
+    make_instance $@;
+    ;;
+  START)
+    start_instance;
+    ;;
+  STOP)
+    stop_instance;
+    ;;
+  RESTART)
+    stop_instance;
+    start_instance;
+    ;;
+  ENABLE)
+    enable_instance;
+    ;;
+  HELP)
+    give_help;
+    ;;
+  VERSION)
+    show_version;
+    ;;
+  *)
+    usage "No command given";
+    ;;
+esac

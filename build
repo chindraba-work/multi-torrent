@@ -1,0 +1,141 @@
+#! /usr/bin/env bash
+# SPDX-License-Identifier: MIT
+
+########################################################################
+#                                                                      #
+#  This file is part a system to setup and control a configuration for #
+#  using multiple instances of the rtorrent client.                    #
+#                                                                      #
+#  Copyright © 2020  Chindraba (Ronald Lamoreaux)                      #
+#                    <projects@chindraba.work>                         #
+#  - All Rights Reserved                                               #
+#                                                                      #
+#  Permission is hereby granted, free of charge, to any person         #
+#  obtaining a copy of this software and associated documentation      #
+#  files (the "Software"), to deal in the Software without             #
+#  restriction, including without limitation the rights to use, copy,  #
+#  modify, merge, publish, distribute, sublicense, and/or sell copies  #
+#  of the Software, and to permit persons to whom the Software is      #
+#  furnished to do so, subject to the following conditions:            #
+#                                                                      #
+#  The above copyright notice and this permission notice shall be      #
+#  included in all copies or substantial portions of the Software.     #
+#                                                                      #
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,     #
+#  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF  #
+#  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND               #
+#  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS #
+#  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN  #
+#  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN   #
+#  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE    #
+#  SOFTWARE.                                                           #
+#                                                                      #
+########################################################################
+
+########################################################################
+#                                                                      #
+#  Script to create the working directory and pre-populate the normal  #
+#  settings for the creation and control of unique instances.          #
+#                                                                      #
+#  Except for the boot-time launch and systemd control, the setup is   #
+#  operational after this is executed                                  #
+#                                                                      #
+########################################################################
+
+source ./config
+active_user="$(id --user)"
+active_group="$(id --group)"
+printf "running_group='${active_group}'\n" >> ./config
+
+# Create the working directory structure
+mkdir -p "${torrent_root}"{bin,config,instances/.per-instance}
+
+# Customize and install the main control script
+sed -e\
+  "\
+    s:<<_SERVICE_NAME>>:${service_name}:;\
+    s:<<_SERVICE_ROOT>>:${torrent_root}:\
+  "\
+  ./src/bin/multi-torrentctl \
+  > "${torrent_root}bin"/"${service_name}ctl"
+chmod 0755 "${torrent_root}bin/${service_name}ctl"
+[ -d ~/bin ] && \
+  ln -s "${torrent_root}bin/${service_name}ctl" ~/bin/
+
+# Copy the standard torrent config files
+cp -rt "${torrent_root}config/" ./src/config.d
+
+# Customize and network settings for the torrents
+sed -i -e\
+  "\
+    s:<<_IP4_DEVICE>>:${internal_ip}:;\
+    s:<<_IP4_PUBLIC>>:${external_ip}:;\
+    s:<<_PORT_RANGE>>:${port_range}:\
+  "\
+  "${torrent_root}config/config.d/20_network_settings.rc"
+
+# Copy the available optional config files
+cp -rt "${torrent_root}instances/" ./src/.per-instance
+
+# Copy and customize the template .rc file
+sed -i -e\
+  "\
+    s:<<_SERVICE_NAME>>:${service_name}:;\
+    s:<<_SERVICE_ROOT>>:${torrent_root}:\
+  "\
+  "${torrent_root}instances/.per-instance/.rtorrent.rc"
+
+# Copy and customize the data file
+sed -e\
+  "\
+    s:<<_SERVICE_NAME>>:${service_name}:;\
+    s:<<_SERVICE_ROOT>>:${torrent_root}:\
+  "\
+  ./src/multi-torrent.data\
+  > "${torrent_root}${service_name}.data"
+
+# Create the default instance
+cp -r "${torrent_root}instances/.per-instance" "${torrent_root}instances/default"
+
+# Modify the .rc file for the default instance
+sed -i -e\
+  "\
+    s:<<_INSTANCE_NAME>>:default:;\
+    s:\"<<_NET_PORT>>\":\"10\":;\
+    s:\"<<_DHT_PORT>>\":\"50\":\
+  "\
+  "${torrent_root}instances/default/.rtorrent.rc"
+
+# Add some selected optional config files for the default instance
+# Enable DHT use, assuming a public torrent base
+cp "${torrent_root}config/config.d/.per-instance/28_use_dht.rc"\
+  "${torrent_root}instances/default/config/config.d/"
+# Enable the normal watch file setup
+cp "${torrent_root}config/config.d/.per-instance/70_watch_directories.rc"\
+  "${torrent_root}instances/default/config/config.d/"
+# Show a log message that custom config files were loaded.
+cp "${torrent_root}config/config.d/.per-instance/98_custom_success.rc"\
+  "${torrent_root}instances/default/config/config.d/"
+
+# Build the systemd service template for instance launch and control
+sed -e\
+  "\
+    s:<<_SERVICE_NAME>>:${service_name}:;\
+    s:<<_SERVICE_ROOT>>:${torrent_root}:;\
+    s:<<_USER_NAME>>:${active_user}:;\
+    s:<<_GROUP_NAME>>:${active_group}:\
+  "\
+  ./src/bin/multi-torrent@.service\
+   > "${torrent_root}bin/${service_name}@.service"
+
+# Build the systemd target file to unify the instances
+sed -e\
+  "\
+    s:<<_SERVICE_NAME>>:${service_name}:;\
+    s:<<_SERVICE_ROOT>>:${torrent_root}:\
+  "\
+  ./src/bin/multi-torrent.target\
+  > "${torrent_root}bin/${service_name}.target"
+
+printf "controls_dir='""$(find ${torrent_root} -maxdepth 1 -type d -name bin)""'\n" >>./config
+

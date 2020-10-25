@@ -1,0 +1,23 @@
+#
+# torrents that are being shared, either as initial seeds or as returns
+# for downloads from the swarm. For seeding back, the original download
+# needs to be stopped, the files relocated to the proper directory, and
+# the meta file added to the share directory of the instance's watch
+# directory tree.
+#
+# Better would be to know ahead of time that the torrent will be in this
+# category and start if from the seeds watch directory in the beginning.
+#
+# LTS seeds should be handled by a dedicated instance of rtorrent rather
+# than being 'tacked on' to a common instance used for downloads.
+# Such an instance will have its own watch directory and a dedicated
+# subdirectory structure within the _ROOT_DIR/instances/ directory.
+#
+
+# Create the dedicated watch and data directories 
+execute.throw = bash, -c, (cat,"builtin cd \"", (cfg.instdir), "\" ",\
+    "&& mkdir -p {seeds,\"",(cfg.watch),"seeds\"}")
+# torrents that are being seeded. Will autostart.
+schedule2 = (cat, (cfg.instance), "_seeds"), 17, 10, ((load.start, \
+    (cat, (cfg.watch), "seeds/*.torrent"), \
+    (cat, "d.directory.set=",(cfg.instdir),"seeds")))

@@ -1,0 +1,60 @@
+#! /usr/bin/env bash
+# SPDX-License-Identifier: MIT
+
+########################################################################
+#                                                                      #
+#  This file is part a system to setup and control a configuration for #
+#  using multiple instances of the rtorrent client.                    #
+#                                                                      #
+#  Copyright © 2020  Chindraba (Ronald Lamoreaux)                      #
+#                    <projects@chindraba.work>                         #
+#  - All Rights Reserved                                               #
+#                                                                      #
+#  Permission is hereby granted, free of charge, to any person         #
+#  obtaining a copy of this software and associated documentation      #
+#  files (the "Software"), to deal in the Software without             #
+#  restriction, including without limitation the rights to use, copy,  #
+#  modify, merge, publish, distribute, sublicense, and/or sell copies  #
+#  of the Software, and to permit persons to whom the Software is      #
+#  furnished to do so, subject to the following conditions:            #
+#                                                                      #
+#  The above copyright notice and this permission notice shall be      #
+#  included in all copies or substantial portions of the Software.     #
+#                                                                      #
+#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,     #
+#  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF  #
+#  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND               #
+#  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS #
+#  BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN  #
+#  ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN   #
+#  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE    #
+#  SOFTWARE.                                                           #
+#                                                                      #
+########################################################################
+
+########################################################################
+#                                                                      #
+#  The script to setup and enable the boot-time launch and systemd     #
+#  control of the instances running rtorrent. (Optional step)          #
+#                                                                      #
+########################################################################
+
+source ./config
+active_user="$(id --user)"
+
+[ "0" == "$active_user" ] || {
+  printf "ERROR: The install script must be executed with root permissions.\n"
+  exit 1;
+}
+
+# Install the systemd control files.
+cp "${controls_dir}/${service_name}@.service" "/usr/lib/systemd/system/"
+cp "${controls_dir}/${service_name}.target" "/usr/lib/systemd/system/"
+
+# Make the systemd target file writable by the user creating the setup
+chgrp "${running_group}" "/usr/lib/systemd/system/${service_name}.target"
+
+# Tell systemd to re-read the files (find the new ones)
+systemctl daemon-reload
+# Enable systemd control of the whole setup
+systemctl enable "${service_name}.target" 2>/dev/null

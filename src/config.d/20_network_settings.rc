@@ -1,0 +1,16 @@
+#
+#  Settings for all instances, allowing customization of ports within
+#  a deliniated space
+
+# Set the IP addresses used by default (may be overridden in config.d files
+
+# Which IP address to bind to locally, i.e., the ip of the NIC card
+method.insert = cfg.internal_ip, private|const|string, (cat,"<<_IP4_DEVICE>>")
+
+# What IP address to report to the trackers and DHT swarms, the public IP address
+method.insert = cfg.external_ip, private|const|string, (cat,"<<_IP4_PUBLIC>>")
+
+# Set the port block to use for all port setting. Uses port numbers from
+#  xxx10 to xxx89. Make sure the firewall opens the needed ports.
+method.insert = cfg.port_base, private|const|string, (cat,"<<_PORT_RANGE>>")
+

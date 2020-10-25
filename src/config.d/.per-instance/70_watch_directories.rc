@@ -1,0 +1,19 @@
+#
+# Common watch directories. Format for all instances is the same while
+# the directories for watching and for files are unique per instance
+
+# Create the auto-start watch directory
+execute.throw = bash, -c, (cat,"builtin cd \"", (cfg.instdir), "\" ",\
+    "&& mkdir -p \"",(cfg.watch),"start\"")
+# torrents that SHOULD autostart
+schedule2 = (cat, (cfg.instance), "_start"), 11, 10, ((load.start, \
+    (cat, (cfg.watch), "start/*.torrent")))
+
+# Create the load only watch directory
+execute.throw = bash, -c, (cat,"builtin cd \"", (cfg.instdir), "\" ",\
+    "&& mkdir -p \"",(cfg.watch),"load\"")
+# torrents that should NOT autostart
+schedule2 = (cat, (cfg.instance), "_load"), 13, 10, ((load.normal, \
+    (cat, (cfg.watch), "load/*.torrent")))
+
+

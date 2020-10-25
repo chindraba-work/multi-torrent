@@ -1,0 +1,36 @@
+# Normal settings for all instances.
+
+# Whether to allocate disk space for a new torrent. Default: `0`
+system.file.allocate.set = 1
+
+# Common directory layout
+method.insert = cfg.logs,     private|const|string, (cat,"/var/log/rtorrent/")
+method.insert = cfg.logfile,  private|const|string, (cat,(cfg.logs),(system.time),".",(cfg.instance),".log")
+
+# Instance layout (base paths)
+method.insert = cfg.instdir,  private|const|string, (cat,(cfg.rootdir),"instances/",(cfg.instance),"/")
+method.insert = cfg.watch,    private|const|string, (cat,(cfg.instdir),"watch/")
+method.insert = cfg.sname,    private|const|string, (cat,".session")
+
+# Create instance session directory
+execute.throw = bash, -c, (cat,"builtin cd \"", (cfg.instdir), "\" ",\
+    "&& mkdir -p {",(cfg.sname),",downloads,watch}")
+
+##view.sort_current = seeding, greater=d.ratio=
+schedule2 = (cat, "monitor_",(cfg.instance),"_diskspace"), 15, 60, ((close_low_diskspace, 1000M))
+
+# Basic operational settings (no need to change these)
+session.path.set = (cat, (cfg.instdir), (cfg.sname), "/")
+directory.default.set = (cat, (cfg.instdir), "downloads")
+log.execute = (cat, (cfg.logs), "execute.log")
+log.xmlrpc = (cat, (cfg.logs), "xmlrpc.log")
+execute.nothrow = bash, -c, (cat, "echo >",(session.path), "rtorrent.pid", " ", (system.pid))
+
+# Logging:
+#   Levels = critical error warn notice info debug
+#   Groups = connection_* dht_* peer_* rpc_* storage_* thread_* tracker_* torrent_*
+print = (cat, "Logging to ", (cfg.logfile))
+log.open_file = "log", (cfg.logfile)
+log.add_output = "info", "log"
+#log.add_output = "tracker_debug", "log"
+

@@ -1,0 +1,16 @@
+[Unit]
+Description=%I instance of <<_SERVICE_NAME>>
+PartOf=<<_SERVICE_NAME>>.target
+After=cron.service
+
+[Service]
+User=<<_USER_NAME>>
+Group=<<_GROUP_NAME>>
+Type=oneshot
+RemainAfterExit=true
+ExecStart=<<_SERVICE_ROOT>>bin/<<_SERVICE_NAME>>ctl start %i
+ExecStop=<<_SERVICE_ROOT>>bin/<<_SERVICE_NAME>>ctl stop %i
+PIDFile=<<_SERVICE_ROOT>>instances/%I/.session/<<_SERVICE_NAME>>.pid
+
+[Install]
+WantedBy=<<_SERVICE_NAME>>.target

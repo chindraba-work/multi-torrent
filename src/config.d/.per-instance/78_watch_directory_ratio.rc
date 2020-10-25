@@ -1,0 +1,18 @@
+#
+# Included for private trackers where ratio development matters
+#
+
+# All ratio-building files are stored in a dedicated subdirectory of the 
+# instances directory tree.
+# The premise is that the files are only downloaded to be seeded, and will
+# have a short run before they're removed from the system, and won't be
+# saved for personal use.
+
+# Create the dedicated watch and data directories 
+execute.throw = bash, -c, (cat,"builtin cd \"", (cfg.instdir), "\" ",\
+    "&& mkdir -p {ratio,\"",(cfg.watch),"ratio\"}")
+
+# torrents that are being seeded. Will autostart.
+schedule2 = (cat, (cfg.instance), "_ratio"), 17, 10, ((load.start, \
+    (cat, (cfg.watch), "ratio/*.torrent"), \
+    (cat, "d.directory.set=",(cfg.instdir),"ratio")))

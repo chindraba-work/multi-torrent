@@ -1,0 +1,51 @@
+#
+# Not needed in rtorrent, as a different huristic is used for finding
+# seeds and peers. Nevertheless, it's helpful to the user to have a way
+# to see the condition of active torrent swams.
+# This forces a scrape of the trackers to update the seed/peer counts
+# on a scheduled basis
+#
+
+# Set scrape intervals for active (~5 mins) and idle items (~33 minutes)
+method.insert = cfg.scrape_interval.active, value,  280
+method.insert = cfg.scrape_interval.idle,   value, 1960
+
+# Regularly update scrape information for all torrents (even stopped
+# ones), it won't affect the operation of rtorrent, but nice to have
+# these values updated.
+# This info is only updated when rtorrent starts or a torrent is added
+# by default.
+# Try to balance calls to not fire them up at the same time (since
+# multiscraping isn't implemented in libtorrent). Check for update every
+# 3 minutes and distinguish between 2 groups:
+#   - transferring (uploading and/or downloading) torrents:
+#         update in every 5 minutes
+#   - non-transferring torrents:
+#         update in every 33 minutes
+
+# helper method: sets current time in a custom field (tm_last_scrape)
+# and saves session
+
+method.insert = d.last_scrape.set, simple|private, "d.custom.set=tm_last_scrape,$cat=$system.time=; d.save_resume="
+
+# helper method: sends the scrape request and sets the tm_last_scrape
+# timestamp and saves session
+method.insert = d.last_scrape.send_set, simple, "d.tracker.send_scrape=0;d.last_scrape.set="
+
+# helper method: decides whether the required time interval (with the
+# help of an argument) has passed and if so calls the above method
+method.insert = d.last_scrape.check_elapsed, simple|private, "branch={(elapsed.greater,$d.custom=tm_last_scrape,$argument.0=),d.last_scrape.send_set=}"
+
+# helper method: checks for non-existing/empty custom field to be able
+# to test its validity later
+method.insert = d.last_scrape.check, simple|private, "branch={d.custom=tm_last_scrape,d.last_scrape.check_elapsed=$argument.0=,d.last_scrape.send_set=}"
+
+# sets custom field (tm_last_scrape) to current time only for torrents
+# just has been added (skips setting time on purpose when rtorrent started)
+method.set_key = event.download.inserted_new, ~last_scrape_i, "d.last_scrape.set="
+
+# check for update every 3 minutes (180 sec) and update scrape info for
+# transferring torrents in every 5 minutes (300-20=280 sec) and for
+# non-transferring ones in every 33 minutes (1980-20=1960 sec)
+schedule2 = last_scrape_t, 180, 180, "d.multicall2=default,\"branch=\\\"or={d.up.rate=,d.down.rate=}\\\",d.last_scrape.check=$cfg.scrape_interval.active=,d.last_scrape.check=$cfg.scrape_interval.idle=\""
+

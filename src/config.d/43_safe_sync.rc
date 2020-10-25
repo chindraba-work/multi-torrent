@@ -1,0 +1,6 @@
+# Settings to replace the old safe_sync setting. Helps to reduce chunk
+# hash errors on large torrents under heavy load.
+
+pieces.sync.always_safe.set = yes
+pieces.sync.timeout.set = 600
+pieces.sync.timeout_safe.set = 900

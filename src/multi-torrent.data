@@ -1,0 +1,130 @@
+Customizing the .rc file for multiple instances of rtorrent running on
+one machine. Each requires it's own operating directory and unique port
+numbers to avoid conflicts. The use of the operating directory is handled by
+the modified version of the .rc file for the instance. To make it work,
+however, requires that 3 changes be made to the 'template' file to
+create the instance version of the .rc file.
+
+1. Use this table to build the two port settings in the .rc file.
+
+_NET  _DHT
+PORT  PORT  USAGE
+----  ----  --------
+ 10    50   default
+ 11    51   
+ 12    52   
+ 13    53   
+ 14    54   
+ 15    55   
+ 16    56   
+ 17    57   
+ 18    58   
+ 19    59   
+ 20    60   
+ 21    61   
+ 22    62   
+ 23    63   
+ 24    64   
+ ..    ..
+ ..    ..
+ ..    ..
+ 45    85   
+ 46    86   
+ 47    87   
+ 48    88   
+ 49    89   
+
+For example, using the instance name of 'default', find the 5 lines, which
+should begin at line 15.
+
+# Instance port control settings. Replace '<<_NET_PORT>>' and '<<_DHT_PORT>>'
+# with the values for this instance, found in:
+#    <<_SERVICE_ROOT>><<_SERVICE_NAME>>.data
+method.insert = cfg.net_port,      private|const|string, (cat,"<<_NET_PORT>>")
+method.insert = cfg.dht_port,      private|const|string, (cat,"<<_DHT_PORT>>")
+
+Replace the "<<_NET_PORT>>" and "<<_DHT_PORT>>" to make them into the following:
+
+# Instance port control settings. Replace '<<_NET_PORT>>' and '<<_DHT_PORT>>'
+# with the values for this instance, found in:
+#    <<_SERVICE_ROOT>><<_SERVICE_NAME>>.data
+method.insert = cfg.net_port, private|const|string, (cat,"10")
+method.insert = cfg.dht_port, private|const|string, (cat,"50")
+
+
+2. The instance name itself replaces the holder <<_INSTANCE_NAME>>, which should be
+on line 22. It can also be added to the first line as a human-centric label.
+
+The instance name is used for unique session directories, as well as creating
+unique names for watch schedules, and the associated watch directories and
+data directories.
+
+# shares (cfg.bsaedir/)
+# ├── bin
+# │   ├── sharing
+# │   └── unshare
+# ├── config
+# │   ├── config.d
+# │   │   ├── 00_system_settings.rc
+# │   │   ├── 05_peers_settings.rc
+# │   │   ├── 10_directory_settings.rc
+# │   │   ├── 20_network_settings.rc
+# │   │   ├── 25_port_access.rc
+# │   │   ├── 30_basic_methods.rc
+# │   │   ├── 41_active_tab_sorting.rc
+# │   │   ├── 42_autoscrape.rc
+# │   │   ├── 43_safe_sync.rc
+# │   │   ├── 90_per_instance_config.rc
+# │   │   └── 98_full_success.rc
+# │   └── .per-instance
+# │       ├── 28_use_dht.rc
+# │       ├── 70_watch_directories.rc
+# │       ├── 72_watch_directory_seed.rc
+# │       ├── 78_watch_directory_ratio.rc
+# │       └── 98_custom_success.rc
+# ├── data_hub
+# │   └── torrent_data
+# │       ├── books
+# │       ├── games
+# │       ├── movies
+# │       │   └── ?Viking.Blood.2019.1080p.H264.AC3-EVO
+# │       ├── shows
+# │       │   ├── ?Air.Wolf
+# │       │   └── ?The.Commodore.Story.2018.AC3
+# │       ├── software
+# │       └── videos
+# ├── data_refs
+# │   ├── ?Air.Wolf -> /shares/data_hub/torrent_data/shows/Air.Wolf
+# │   ├── ?Viking.Blood.2019.H264.AC3-EVO -> /shares/data_hub/torrent_data/movies/Viking.Blood.2019.H264.AC3-EVO
+# │   └── ?The.Commodore.Story.2018.AC3 -> /shares/data_hub/torrent_data/shows/The.Commodore.Story.2018.AC3
+# ├── instance-list
+# ├── instances
+# │   ├── _blank (cfg.instdir/) [<<_INSTANCE_NAME>>] [(cfg.instance)]
+# │   │   ├── config
+# │   │   │   └── config.d
+# │   │   ├── downloads [(directory.default)]
+# │   │   │   ├── ?Air.Wolf -> /shares/data_refs/Air.Wolf
+# │   │   │   └── ?Viking.Blood.2019.H264.AC3-EVO -> /shares/data_refs/Viking.Blood.2019.H264.AC3-EVO
+# │   │   ├── .rtorrent.rc
+# │   │   ├── seeds
+# │   │   │   └── ?The.Commodore.Story.2018.AC3 -> /shares/data_refs/The.Commodore.Story.2018.AC3
+# │   │   ├── .session (cfg.sname/) [(session.path)]
+# │   │   └── watch (cfg.watch/)
+# │   │       ├── load
+# │   │       ├── ratio
+# │   │       ├── seed
+# │   │       └── start
+# │   └── _default
+# │       ├── config
+# │       │   └── config.d
+# │       ├── downloads
+# │       ├── .rtorrent.rc
+# │       ├── seeds
+# │       ├── .session
+# │       └── watch
+# │           ├── load
+# │           ├── ratio
+# │           ├── seed
+# │           └── start
+# └── _rtorrent.data
+
