@@ -58,3 +58,5 @@ chgrp "${running_group}" "/usr/lib/systemd/system/${service_name}.target"
 systemctl daemon-reload
 # Enable systemd control of the whole setup
 systemctl enable "${service_name}.target" 2>/dev/null
+
+# vim: syntax=sh ts=4 sw=4 sts=4 et sr

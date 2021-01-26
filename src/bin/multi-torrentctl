@@ -81,7 +81,7 @@ Released under the MIT License.
 
 usage() {
   [ -n "$1" ] && printf "\nERROR: %s!\n" "$@" >&2;
-  printf "  
+  printf "
 Usage: ${service_name}ctl <command> <instance_name> [<net_port> <dht_port>]
     command:  start|stop|reload|restart|new|create|enabel|help|version
     instance: name of the instance, for directory and screen name
@@ -172,7 +172,7 @@ make_instance() {
 }
 
 enable_instance() {
-  [ -e "/usr/lib/systemd/system/${service_name}.target" ] && 
+  [ -e "/usr/lib/systemd/system/${service_name}.target" ] &&
     sed -i "/^\[Install/ i Wants=${service_name}@${instance_name}" "${service_name}.target"
 }
 
@@ -203,3 +203,5 @@ case ${1^^} in
     usage "No command given";
     ;;
 esac
+
+# vim: syntax=sh ts=4 sw=4 sts=4 et sr

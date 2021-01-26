@@ -139,3 +139,4 @@ sed -e\
 
 printf "controls_dir='""$(find ${torrent_root} -maxdepth 1 -type d -name bin)""'\n" >>./config
 
+# vim: syntax=sh ts=4 sw=4 sts=4 et sr
